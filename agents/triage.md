@@ -253,15 +253,16 @@ Information is sufficient for a developer to investigate and fix.
 - **Testing complexity:** Simple unit test vs needs integration tests, mocking, or environment setup
 - **Domain knowledge:** Requires deep understanding of subsystems or external dependencies
 
-| Score | Rough guidance |
-|-------|---------------|
-| 0.25 | Trivial: typo fix, one-line condition change, documentation update |
-| 0.5 | Small: single-function fix, low-risk logic change, isolated update |
-| 1.0 | Moderate: multi-function change, local refactor, requires some test coverage |
-| 2.0 | Substantial: touches multiple files/layers, architectural consideration, thorough test coverage |
-| 3.0 | Large: multi-file refactor, performance work spanning subsystems, complex integration |
+| Score | Meaning |
+|-------|---------|
+| 0.25 | Trivial — typo, config change, one-liner |
+| 0.5 | Simple — small, well-scoped change |
+| 1 | Medium — requires understanding context, touches a few files |
+| 1.5 | Moderate — multiple components or some design work |
+| 2 | Complex — significant implementation, testing, or coordination |
+| 3 | Very complex — large scope, architectural changes, high risk |
 
-Higher effort issues (effort >= 2.0) get routed to human review instead of auto-promoting to the coder — similar to how feature issues already require human prioritization. When in doubt between two scores, round down (bias toward auto-promotion). Only estimate effort for bug/docs/performance categories; feature issues already gate on human review.
+Higher effort issues (effort >= 2.0) get routed to human review instead of auto-promoting to the coder — similar to how feature issues already require human prioritization. When in doubt between two scores, round up (bias toward human review). Only estimate effort for bug/docs/performance categories; feature issues already gate on human review.
 
 ```json
 {

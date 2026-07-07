@@ -91,6 +91,27 @@
       "then": { "required": ["clarity_scores", "triage_summary"] }
     },
     {
+      "if": {
+        "required": ["action", "triage_summary"],
+        "properties": {
+          "action": { "const": "sufficient" },
+          "triage_summary": {
+            "required": ["category"],
+            "properties": {
+              "category": { "enum": ["bug", "documentation", "performance"] }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "triage_summary": {
+            "required": ["effort"]
+          }
+        }
+      }
+    },
+    {
       "if": { "properties": { "action": { "const": "prerequisites" } }, "required": ["action"] },
       "then": {
         "required": ["prerequisites"],
@@ -137,7 +158,7 @@
           "type": "number",
           "minimum": 0.25,
           "maximum": 3,
-          "description": "Estimated implementation effort (0.25 = trivial, 1 = moderate, 3 = substantial)"
+          "description": "Estimated implementation effort (0.25 = trivial, 1 = moderate, 2 = substantial, 3 = large)"
         }
       },
       "additionalProperties": false

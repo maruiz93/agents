@@ -184,7 +184,7 @@ run_test "sufficient-bug-high-effort-gets-triaged" \
 
 run_test_stdout "sufficient-bug-high-effort-logs-reason" \
   '{"action":"sufficient","reasoning":"all clear","clarity_scores":{"symptom":0.9,"cause":0.85,"reproduction":0.9,"impact":0.8,"overall":0.87},"triage_summary":{"title":"Refactor auth middleware","severity":"high","category":"bug","problem":"Auth middleware incorrectly handles edge cases","root_cause_hypothesis":"Architectural issue","reproduction_steps":["step 1"],"environment":"Linux","impact":"All users","recommended_fix":"Refactor auth middleware","proposed_test_case":"test_auth_edge_cases","effort":2.5},"comment":"## Triage Summary\n\nSubstantial refactor needed."}' \
-  "High effort (2.5) — applying triaged label for human review..."
+  "High effort (2.5) — deferring triaged label for human review..."
 
 run_test "sufficient-documentation-high-effort-gets-triaged" \
   '{"action":"sufficient","reasoning":"all clear","clarity_scores":{"symptom":0.9,"cause":0.85,"reproduction":0.9,"impact":0.8,"overall":0.87},"triage_summary":{"title":"Rewrite architecture docs","severity":"medium","category":"documentation","problem":"Outdated arch docs","root_cause_hypothesis":"Not updated","reproduction_steps":["step 1"],"environment":"N/A","impact":"Contributors","recommended_fix":"Rewrite docs","proposed_test_case":"test_docs","effort":2.0},"comment":"## Triage Summary\n\nLarge documentation update."}' \
@@ -192,6 +192,14 @@ run_test "sufficient-documentation-high-effort-gets-triaged" \
 
 run_test "sufficient-performance-high-effort-gets-triaged" \
   '{"action":"sufficient","reasoning":"all clear","clarity_scores":{"symptom":0.9,"cause":0.85,"reproduction":0.9,"impact":0.8,"overall":0.87},"triage_summary":{"title":"Optimize database queries across layers","severity":"high","category":"performance","problem":"Slow queries","root_cause_hypothesis":"Missing indexes and N+1 queries","reproduction_steps":["step 1"],"environment":"Production","impact":"All users","recommended_fix":"Add indexes and refactor query patterns","proposed_test_case":"test_query_performance","effort":3.0},"comment":"## Triage Summary\n\nLarge performance optimization."}' \
+  "gh api repos/test-org/test-repo/issues/42/labels -f labels[]=triaged --silent"
+
+run_test "sufficient-bug-missing-effort-gets-triaged" \
+  '{"action":"sufficient","reasoning":"all clear","clarity_scores":{"symptom":0.9,"cause":0.85,"reproduction":0.9,"impact":0.8,"overall":0.87},"triage_summary":{"title":"Fix crash","severity":"high","category":"bug","problem":"Crash","root_cause_hypothesis":"Buffer overflow","reproduction_steps":["step 1"],"environment":"Linux","impact":"All users","recommended_fix":"Fix buffer","proposed_test_case":"test_crash"},"comment":"## Triage Summary\n\nReady."}' \
+  "gh api repos/test-org/test-repo/issues/42/labels -f labels[]=triaged --silent"
+
+run_test "sufficient-bug-nonnumeric-effort-gets-triaged" \
+  '{"action":"sufficient","reasoning":"all clear","clarity_scores":{"symptom":0.9,"cause":0.85,"reproduction":0.9,"impact":0.8,"overall":0.87},"triage_summary":{"title":"Fix crash","severity":"high","category":"bug","problem":"Crash","root_cause_hypothesis":"Buffer overflow","reproduction_steps":["step 1"],"environment":"Linux","impact":"All users","recommended_fix":"Fix buffer","proposed_test_case":"test_crash","effort":"high"},"comment":"## Triage Summary\n\nReady."}' \
   "gh api repos/test-org/test-repo/issues/42/labels -f labels[]=triaged --silent"
 
 run_test "sufficient-feature-gets-triaged" \
