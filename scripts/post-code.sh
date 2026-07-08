@@ -475,15 +475,62 @@ fi
 echo "Creating PR..."
 
 COMMIT_SUBJECT="$(git log -1 --format='%s' HEAD)"
-COMMIT_BODY_RAW="$(git log -1 --format='%b' HEAD | sed '/^Signed-off-by:/d' | sed '/^Closes #/d' | sed -e :a -e '/^\n*$/{ $d; N; ba; }')"
 
-COMMIT_BODY="$(echo "${COMMIT_BODY_RAW}" | awk '
-  /^$/           { if (buf) print buf; print; buf=""; next }
-  /^[-*#>]|^  /  { if (buf) print buf; buf=""; print; next }
-  /^Closes /     { if (buf) print buf; buf=""; print; next }
-                 { buf = (buf ? buf " " $0 : $0) }
-  END            { if (buf) print buf }
-')"
+# Read pr_body from agent output. Fall back to commit body if absent.
+PR_BODY_FROM_RESULT=""
+if [ -n "${RESULT_FILE}" ]; then
+  if ! PR_BODY_FROM_RESULT="$(jq -r '.pr_body // empty' "${RESULT_FILE}" 2>/dev/null)"; then
+    echo "::notice::Failed to parse pr_body from result file; using commit body"
+    PR_BODY_FROM_RESULT=""
+  fi
+fi
+
+# Secret-scan pr_body — it lives outside the git tree so gitleaks (step 3)
+# never sees it, but it becomes a public PR description.
+if [ -n "${PR_BODY_FROM_RESULT}" ]; then
+  PR_BODY_TMP="$(mktemp)"
+  printf '%s\n' "${PR_BODY_FROM_RESULT}" > "${PR_BODY_TMP}"
+  if ! gitleaks detect --source "${PR_BODY_TMP}" --no-git --redact 2>/dev/null; then
+    echo "::warning::BLOCKED — secret detected in pr_body; falling back to commit body"
+    PR_BODY_FROM_RESULT=""
+  fi
+  rm -f "${PR_BODY_TMP}"
+fi
+
+if [ -n "${PR_BODY_FROM_RESULT}" ]; then
+  # Strip Signed-off-by globally (agents must never produce DCO trailers),
+  # then strip trailing closing-keyword footer lines so the script appends
+  # them once. Closing keywords mid-body are preserved intentionally.
+  # Only exact GitHub auto-close syntax is matched (e.g. "Closes #42",
+  # "Fixes org/repo#1"). Variants like "Closes: #42" or "closes(#42)"
+  # are intentionally ignored — they don't trigger GitHub auto-close.
+  PR_BODY_CLEAN="$(printf '%s\n' "${PR_BODY_FROM_RESULT}" | sed '/^Signed-off-by:/d')"
+  COMMIT_BODY="$(printf '%s\n' "${PR_BODY_CLEAN}" | awk '
+    { lines[NR] = $0 }
+    END {
+      end = NR
+      while (end > 0) {
+        l = lines[end]
+        if (l == "" || l ~ /^[Cc]lose[sd]? (#|[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+#)[0-9]+$/ || l ~ /^[Ff]ix(e[sd])? (#|[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+#)[0-9]+$/ || l ~ /^[Rr]esolve[sd]? (#|[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+#)[0-9]+$/)
+          end--
+        else
+          break
+      }
+      for (i = 1; i <= end; i++)
+        print lines[i]
+    }
+  ')"
+else
+  # Fall back to unwrapped commit body (legacy path)
+  COMMIT_BODY_RAW="$(git log -1 --format='%b' HEAD | sed '/^Signed-off-by:/d' | sed '/^Closes #/d' | sed -e :a -e '/^\n*$/{ $d; N; ba; }')"
+  COMMIT_BODY="$(echo "${COMMIT_BODY_RAW}" | awk '
+    /^$/           { if (buf) print buf; print; buf=""; next }
+    /^[-*#>]|^  /  { if (buf) print buf; buf=""; print; next }
+    /^Closes /     { if (buf) print buf; buf=""; print; next }
+                   { buf = (buf ? buf " " $0 : $0) }
+    END            { if (buf) print buf }
+  ')"
+fi
 
 # ---------------------------------------------------------------------------
 # Ensure PR title includes an issue reference.
@@ -505,6 +552,18 @@ else
 fi
 
 if [ -z "${COMMIT_BODY}" ]; then
+  # pr_body stripped to empty — fall back to commit body before placeholder
+  COMMIT_BODY_RAW="$(git log -1 --format='%b' HEAD | sed '/^Signed-off-by:/d' | sed '/^Closes #/d' | sed -e :a -e '/^\n*$/{ $d; N; ba; }')"
+  COMMIT_BODY="$(echo "${COMMIT_BODY_RAW}" | awk '
+    /^$/           { if (buf) print buf; print; buf=""; next }
+    /^[-*#>]|^  /  { if (buf) print buf; buf=""; print; next }
+    /^Closes /     { if (buf) print buf; buf=""; print; next }
+                   { buf = (buf ? buf " " $0 : $0) }
+    END            { if (buf) print buf }
+  ')"
+fi
+
+if [ -z "${COMMIT_BODY}" ]; then
   DESCRIPTION="Automated implementation for issue #${ISSUE_NUMBER}."
 else
   DESCRIPTION="${COMMIT_BODY}"
@@ -520,6 +579,7 @@ Closes #${ISSUE_NUMBER}
 
 - [x] Branch is not main/master (\`${BRANCH}\`)
 - [x] Secret scan passed (gitleaks — \`${SCAN_RANGE}\`)
+- [x] PR body secret scan passed (gitleaks — no-git)
 - [x] Pre-commit hooks passed (authoritative run on runner)
 - [x] Tests ran inside sandbox"
 
