@@ -47,6 +47,22 @@ Exclude the files already in the diff. Any hit outside the diff is a
 Medium-severity finding: "stale reference to removed/renamed
 `<identifier>` in `<file>:<line>`."
 
+### CI coverage regression severity
+
+When a change reduces which file paths trigger CI checks (e.g.,
+replacing a broad path filter with a narrower selection mechanism),
+evaluate the merge-gate impact:
+
+- **HIGH** if the regression removes merge-queue or PR-gate signal for
+  a class of changes that previously received it. Changes to shared
+  infrastructure (CI scripts, test runners, config files) landing
+  without CI signal is a HIGH-severity coverage regression.
+- **Medium** if the regression only affects optional or advisory checks
+  that do not gate merging.
+
+The key question: "Can a PR touching these paths now land on main
+without the CI checks that previously guarded them?" If yes, rate HIGH.
+
 ### Technical documentation with correctness surface area
 
 Not all documentation is prose. Any
